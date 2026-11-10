@@ -46,3 +46,8 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}button
 .album{display:block;columns:2;column-gap:20px;align-items:start}.polaroid{display:inline-block;width:100%;margin:0 0 30px;break-inside:avoid;padding:10px 10px 14px}.polaroid figcaption{padding-top:8px;line-height:1.25;font-size:1.05rem}
 @media(min-width:700px){.album{columns:3;column-gap:28px}}
 .screen>.script{text-align:center}
+
+.balloons{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:15}
+.balloon{position:absolute;bottom:-90px;opacity:0;animation:rise linear forwards}
+@keyframes rise{0%{transform:translate(0,0);opacity:0}10%{opacity:.95}50%{transform:translate(var(--sway),-55vh)}100%{transform:translate(calc(var(--sway)*-1),-125vh);opacity:.95}}
+@media(prefers-reduced-motion:reduce){.balloons{display:none}}

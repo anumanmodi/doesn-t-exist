@@ -24,19 +24,30 @@ export function Cake({next}){
   const [out,setOut]=useState(false),[mic,setMic]=useState('idle'),stop=useRef(null),timer=useRef(null);
   const blow=()=>{if(out)return;stop.current&&stop.current();setOut(true);setMic('idle');timer.current=setTimeout(next,2400)};
   useEffect(()=>()=>{stop.current&&stop.current();clearTimeout(timer.current)},[]);
-  const listen=async()=>{
+    const listen=async()=>{
+    if(mic==='on')return;
+    const AC=window.AudioContext||window.webkitAudioContext;
+    let ctx;
     try{
-      const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false}});
-      const ctx=new (window.AudioContext||window.webkitAudioContext)(),an=ctx.createAnalyser();an.fftSize=1024;ctx.createMediaStreamSource(st).connect(an);
-      const buf=new Float32Array(an.fftSize);let raf,t0=performance.now(),base=0,n=0,since=0;
+      ctx=new AC();              // must be created inside the tap (iOS needs this)
+      ctx.resume&&ctx.resume();
+      const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+      await ctx.resume();
+      const an=ctx.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=0.2;
+      ctx.createMediaStreamSource(st).connect(an);
+      const buf=new Uint8Array(an.fftSize);
+      let raf,t0=performance.now(),base=0,n=0,since=0;
       stop.current=()=>{cancelAnimationFrame(raf);st.getTracks().forEach(t=>t.stop());ctx.close();stop.current=null};
-      const loop=()=>{an.getFloatTimeDomainData(buf);let s=0;for(const v of buf)s+=v*v;const r=Math.sqrt(s/buf.length),now=performance.now();
-        if(now-t0<800){base=(base*n+r)/(n+1);n++}
-        else if(r>Math.max(base*3,.05)){since=since||now;if(now-since>400){blow();return}}else since=0;
+      const loop=()=>{
+        an.getByteTimeDomainData(buf);
+        let s=0;for(let i=0;i<buf.length;i++){const v=(buf[i]-128)/128;s+=v*v}
+        const r=Math.sqrt(s/buf.length),now=performance.now();
+        if(now-t0<700){base=(base*n+r)/(n+1);n++}
+        else if(r>Math.max(base*2.2,0.035)){since=since||now;if(now-since>300){blow();return}}
+        else since=0;
         raf=requestAnimationFrame(loop)};
       loop();setMic('on');
-    }catch{setMic('denied')}};
-  const X0=[88,120,152];
+    }catch{ctx&&ctx.close&&ctx.close();setMic('denied')}};
   return <section className="screen center"><h2 className="display sm">{c.wishHeading}</h2><p className="script">{out?'Wish sent. 🤍':c.wishHint}</p>
     <svg className={'cake'+(out?' out':'')} viewBox="0 0 240 250" role="img" aria-label="Birthday cake with candles">
       <ellipse cx="120" cy="232" rx="108" ry="10" fill="#66534E" opacity=".18"/><rect x="16" y="214" width="208" height="10" rx="5" fill="#fff" stroke="#D8C9C2"/>
