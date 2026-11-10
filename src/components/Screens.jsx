@@ -21,7 +21,7 @@ export const Letter=({next})=><section className="screen"><h2 className="display
   <button className="btn rise" style={{animationDelay:'5s'}} onClick={next}>Turn the page</button></section>;
 
 export function Cake({next}){
-  const [out,setOut]=useState(false),[mic,setMic]=useState('idle'),stop=useRef(null),timer=useRef(null);
+  const [out,setOut]=useState(false),[mic,setMic]=useState('idle'),[lvl,setLvl]=useState(0),stop=useRef(null),timer=useRef(null);
   const blow=()=>{if(out)return;stop.current&&stop.current();setOut(true);setMic('idle');timer.current=setTimeout(next,2400)};
   useEffect(()=>()=>{stop.current&&stop.current();clearTimeout(timer.current)},[]);
   const X0=[88,120,152];
@@ -36,16 +36,20 @@ export function Cake({next}){
       await ctx.resume();
       const an=ctx.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=0.2;
       ctx.createMediaStreamSource(st).connect(an);
-      const buf=new Uint8Array(an.fftSize);
-      let raf,t0=performance.now(),base=0,n=0,since=0;
+      an.minDecibels=-90;an.maxDecibels=-10;
+      const f=new Uint8Array(an.frequencyBinCount);
+      let raf,t0=performance.now(),base=0,n=0,since=0,ui=0;
       stop.current=()=>{cancelAnimationFrame(raf);st.getTracks().forEach(t=>t.stop());ctx.close();stop.current=null};
       const loop=()=>{
-        an.getByteTimeDomainData(buf);
-        let s=0;for(let i=0;i<buf.length;i++){const v=(buf[i]-128)/128;s+=v*v}
-        const r=Math.sqrt(s/buf.length),now=performance.now();
-        if(now-t0<700){base=(base*n+r)/(n+1);n++}
-        else if(r>Math.max(base*2.2,0.035)){since=since||now;if(now-since>300){blow();return}}
-        else since=0;
+        an.getByteFrequencyData(f);
+        let sum=0;for(let i=1;i<60;i++)sum+=f[i];
+        const L=sum/59/255,now=performance.now();
+        if(now-t0<700){base=(base*n+L)/(n+1);n++}
+        else{
+          const d=L-base;
+          if(now-ui>100){setLvl(Math.max(0,Math.min(1,d/.3)));ui=now}
+          if(d>.12){since=since||now;if(now-since>250){blow();return}}else since=0;
+        }
         raf=requestAnimationFrame(loop)};
       loop();setMic('on');
     }catch{ctx&&ctx.close&&ctx.close();setMic('denied')}};
@@ -57,7 +61,7 @@ export function Cake({next}){
       <rect x="56" y="152" width="128" height="4" fill="#875D66" opacity=".25"/>
       {X0.map((x,i)=><g key={x}><rect x={x-3} y="72" width="6" height="40" rx="2" fill="#FFF9F4" stroke="#D89BA7"/><path className="flame" style={{animationDelay:i*.3+'s'}} d={`M${x} 52q7 10 0 18q-7-8 0-18z`} fill="#F4B860"/><path className="flame" d={`M${x} 60q3 5 0 9q-3-4 0-9z`} fill="#FFF3D6"/><path className="smoke" d={`M${x} 60q-6-8 0-16t0-14`} stroke="#66534E" fill="none" opacity="0"/></g>)}
     </svg>
-    {!out&&<div className="stack"><button className="btn" onClick={listen} disabled={mic==='on'}><Mic size={16}/> {mic==='on'?'Listening... blow gently':'Blow with your breath'}</button>
+    {!out&&<div className="stack">{mic==='on'&&<div className="meter" aria-hidden="true"><i style={{width:lvl*100+'%'}}/></div>}<button className="btn" onClick={listen} disabled={mic==='on'}><Mic size={16}/> {mic==='on'?'Listening... blow towards the phone':'Blow with your breath'}</button>
       <button className="btn ghost" onClick={blow}>Tap to blow</button>
       {mic==='denied'&&<small>Microphone isn't available, so please use Tap to blow.</small>}</div>}</section>}
 
