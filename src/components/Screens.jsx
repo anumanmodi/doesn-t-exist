@@ -24,7 +24,8 @@ export function Cake({next}){
   const [out,setOut]=useState(false),[mic,setMic]=useState('idle'),stop=useRef(null),timer=useRef(null);
   const blow=()=>{if(out)return;stop.current&&stop.current();setOut(true);setMic('idle');timer.current=setTimeout(next,2400)};
   useEffect(()=>()=>{stop.current&&stop.current();clearTimeout(timer.current)},[]);
-    const listen=async()=>{
+  const X0=[88,120,152];
+  const listen=async()=>{
     if(mic==='on')return;
     const AC=window.AudioContext||window.webkitAudioContext;
     let ctx;
